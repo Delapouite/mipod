@@ -252,11 +252,18 @@ export function register(app: express.Application, prefix: string, library: Libr
         }
     });
 
+    var buildLink = function(route: RouteInfo): string {
+        if (route.verb === "GET" && !~route.path.indexOf(":")) {
+            return "<a href='" + route.path + "'>" + route.path + "</a>";
+        }
+        return route.path;
+    };
+
     app.get(prefix + '/', function(req, res) {
         var resp: string = "Available resources: <br/><ul>";
         for (var i in routes) {
             var route: RouteInfo = routes[i];
-            resp += "<li>" + route.verb + " " + route.path + (route.description ? " <i>" + route.description + "</i>" : "") + "</li>";
+            resp += "<li>" + route.verb + " " + buildLink(route) + (route.description ? " <i>" + route.description + "</i>" : "") + "</li>";
         }
         resp += "</ul>Check documentation on <a href='https://github.com/jotak/mipod'>https://github.com/jotak/mipod</a>";
         res.send(resp);

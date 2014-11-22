@@ -19,14 +19,11 @@ SOFTWARE.
 */
 /// <reference path="q/Q.d.ts" />
 var MpdClient = require('./MpdClient');
-
 var MpdEntries = require('./MpdEntries');
 var LibCache = require('./LibCache');
 var tools = require('./tools');
 var q = require('q');
-
 "use strict";
-
 var LoadingListener = (function () {
     function LoadingListener(pushHandler, finishedHandler, maxBatchSize, treeDescriptor, leafDescriptor) {
         this.pushHandler = pushHandler;
@@ -46,7 +43,6 @@ var LoadingListener = (function () {
             this.totalItems = -1;
         }
     };
-
     LoadingListener.prototype.collect = function (song, tags) {
         this.collected.push(song);
         if (this.hTimeout === null) {
@@ -58,7 +54,6 @@ var LoadingListener = (function () {
             }, 200);
         }
     };
-
     LoadingListener.prototype.pushBatches = function (data, tags, start) {
         var batchSize = Math.min(this.maxBatchSize, data.length - start);
         if (batchSize > 0) {
@@ -70,11 +65,13 @@ var LoadingListener = (function () {
                 setTimeout(function () {
                     that.pushBatches(data, tags, start);
                 }, 200);
-            } else if (this.nbSent === this.totalItems) {
+            }
+            else if (this.nbSent === this.totalItems) {
                 this.finishedHandler(this.totalItems);
                 this.totalItems = -1;
             }
-        } else {
+        }
+        else {
             if (this.nbSent === this.totalItems) {
                 this.finishedHandler(this.totalItems);
                 this.totalItems = -1;
@@ -83,7 +80,6 @@ var LoadingListener = (function () {
     };
     return LoadingListener;
 })();
-
 var Loader = (function () {
     function Loader() {
         this.dataPath = "data/";
@@ -97,30 +93,28 @@ var Loader = (function () {
     Loader.prototype.setUseCacheFile = function (useCacheFile) {
         this.useCacheFile = useCacheFile;
     };
-
     Loader.prototype.setDataPath = function (dataPath) {
         this.dataPath = dataPath;
     };
-
     Loader.prototype.onLoadingProgress = function (pushHandler, finishedHandler, maxBatchSize, treeDescriptor, leafDescriptor) {
         this.loadingListener = new LoadingListener(pushHandler, finishedHandler, maxBatchSize, treeDescriptor, leafDescriptor);
     };
-
     Loader.prototype.loadOnce = function () {
         if (this.allLoaded) {
             // Already loaded, no need to load again.
             return "Already loaded";
-        } else if (this.loadingCounter > 0) {
+        }
+        else if (this.loadingCounter > 0) {
             // Already started to load => ignore
             return "Load in progress";
-        } else {
+        }
+        else {
             var that = this;
             LibCache.loadTags(this.tagsFile()).then(function (data) {
                 that.tags = data;
             }).fail(function (reason) {
                 console.log("Could not read tags: " + reason.message);
             }).done();
-
             if (this.useCacheFile) {
                 LibCache.loadCache(this.cacheFile()).then(function (data) {
                     that.mpdContent = data;
@@ -129,7 +123,8 @@ var Loader = (function () {
                         // Cache file is empty, so we'll try MPD anyway
                         console.log("Loading from MPD because cache is empty");
                         that.loadAllLib();
-                    } else {
+                    }
+                    else {
                         that.allLoaded = true;
                         if (that.loadingListener) {
                             that.loadingListener.setTotalItems(that.mpdContent.length);
@@ -141,13 +136,13 @@ var Loader = (function () {
                     that.loadAllLib();
                 }).done();
                 return "Start loading from cache";
-            } else {
+            }
+            else {
                 this.loadAllLib();
                 return "Start loading from MPD";
             }
         }
     };
-
     Loader.prototype.forceRefresh = function () {
         this.allLoaded = false;
         this.loadingCounter = 0;
@@ -156,7 +151,6 @@ var Loader = (function () {
         this.loadAllLib();
         return "OK";
     };
-
     Loader.prototype.getPage = function (start, count, treeDescriptor, leafDescriptor) {
         var end = Math.min(this.mpdContent.length, start + count);
         var subTree = organizer(this.getSongsPage(this.mpdContent, start, end), this.tags, treeDescriptor, leafDescriptor);
@@ -167,11 +161,9 @@ var Loader = (function () {
             data: subTree.root
         };
     };
-
     Loader.prototype.progress = function () {
         return this.loadingCounter;
     };
-
     Loader.prototype.lsInfo = function (dir, leafDescriptor) {
         var that = this;
         return MpdClient.lsinfo(dir).then(function (response) {
@@ -180,7 +172,6 @@ var Loader = (function () {
             });
         });
     };
-
     Loader.prototype.search = function (mode, searchstr, leafDescriptor) {
         var that = this;
         return MpdClient.search(mode, searchstr).then(function (response) {
@@ -189,7 +180,6 @@ var Loader = (function () {
             });
         });
     };
-
     Loader.prototype.readTag = function (tagName, targets) {
         if (!this.allLoaded) {
             throw new Error("Tag reading service is unavailable until the library is fully loaded.");
@@ -212,7 +202,6 @@ var Loader = (function () {
             return returnTags;
         });
     };
-
     Loader.prototype.writeTag = function (tagName, tagValue, targets) {
         if (!this.allLoaded) {
             throw new Error("Tag writing service is unavailable until the library is fully loaded.");
@@ -235,7 +224,6 @@ var Loader = (function () {
         });
         return deferred.promise;
     };
-
     Loader.prototype.deleteTag = function (tagName, targets) {
         if (!this.allLoaded) {
             throw new Error("Tag writing service is unavailable until the library is fully loaded.");
@@ -260,15 +248,12 @@ var Loader = (function () {
         });
         return deferred.promise;
     };
-
     Loader.prototype.cacheFile = function () {
         return this.dataPath + "/libcache.json";
     };
-
     Loader.prototype.tagsFile = function () {
         return this.dataPath + "/libtags.json";
     };
-
     Loader.prototype.loadAllLib = function () {
         var that = this;
         this.loadDirForLib(this.mpdContent, "").then(function () {
@@ -283,7 +268,6 @@ var Loader = (function () {
             }
         }).done();
     };
-
     Loader.prototype.loadDirForLib = function (songs, dir) {
         var that = this;
         return MpdClient.lsinfo(dir).then(function (response) {
@@ -291,41 +275,39 @@ var Loader = (function () {
             return that.parseNext({ songs: songs, lines: lines, cursor: 0 });
         });
     };
-
     Loader.prototype.collect = function (song) {
         if (this.loadingListener) {
             this.loadingListener.collect(song, this.tags);
         }
     };
-
     /*
-    EXAMPLE OF DATA returned by MPD
-    directory: USB
-    directory: WEBRADIO
-    playlist: rock
-    Last-Modified: 2014-07-06T12:05:51Z
-    
-    OTHER EXAMPLE
-    file: USB\/Musics\/myFile.mp3
-    Last-Modified: 2013-09-15T07:33:08Z
-    Time: 202
-    Artist: An artist
-    AlbumArtist: An artist
-    Title: My song
-    Album: An album
-    Track: 1
-    Date: 2004
-    Genre: Rock
-    file: USB\/Musics\/anotherFile.mp3
-    Last-Modified: 2013-09-15T07:33:14Z
-    Time: 242
-    Artist: An artist
-    AlbumArtist: An artist
-    Title: Another song
-    Album: An album
-    Track: 1
-    Date: 2004
-    Genre: Rock
+        EXAMPLE OF DATA returned by MPD
+        directory: USB
+        directory: WEBRADIO
+        playlist: rock
+        Last-Modified: 2014-07-06T12:05:51Z
+
+        OTHER EXAMPLE
+        file: USB\/Musics\/myFile.mp3
+        Last-Modified: 2013-09-15T07:33:08Z
+        Time: 202
+        Artist: An artist
+        AlbumArtist: An artist
+        Title: My song
+        Album: An album
+        Track: 1
+        Date: 2004
+        Genre: Rock
+        file: USB\/Musics\/anotherFile.mp3
+        Last-Modified: 2013-09-15T07:33:14Z
+        Time: 242
+        Artist: An artist
+        AlbumArtist: An artist
+        Title: Another song
+        Album: An album
+        Track: 1
+        Date: 2004
+        Genre: Rock
     */
     Loader.prototype.parseNext = function (parser) {
         var that = this;
@@ -337,38 +319,40 @@ var Loader = (function () {
                 currentSong = { "file": entry.value };
                 parser.songs.push(currentSong);
                 this.loadingCounter++;
-            } else if (entry.key === "directory") {
+            }
+            else if (entry.key === "directory") {
                 currentSong !== null && this.collect(currentSong);
                 currentSong = null;
-
                 // Load (async) the directory content, and then only continue on parsing what remains here
                 return this.loadDirForLib(parser.songs, entry.value).then(function (subParser) {
                     // this "subParser" contains gathered songs, whereas the existing "parser" contains previous cursor information that we need to continue on this folder
                     return that.parseNext({ songs: subParser.songs, lines: parser.lines, cursor: parser.cursor + 1 });
                 });
-            } else if (entry.key === "playlist") {
+            }
+            else if (entry.key === "playlist") {
                 // skip
                 currentSong !== null && this.collect(currentSong);
                 currentSong = null;
-            } else if (currentSong != null) {
+            }
+            else if (currentSong != null) {
                 MpdEntries.setSongField(currentSong, entry.key, entry.value);
             }
         }
         currentSong !== null && this.collect(currentSong);
-
         // Did not find any sub-directory, return directly this data
         return q.fcall(function () {
             return parser;
         });
     };
-
     Loader.prototype.parseFlatDir = function (response, leafDescriptor) {
         return MpdEntries.readEntries(response).map(function (inObj) {
             if (inObj.dir && (leafDescriptor === undefined || leafDescriptor.indexOf("directory") >= 0)) {
                 return { "directory": inObj.dir };
-            } else if (inObj.playlist && (leafDescriptor === undefined || leafDescriptor.indexOf("playlist") >= 0)) {
+            }
+            else if (inObj.playlist && (leafDescriptor === undefined || leafDescriptor.indexOf("playlist") >= 0)) {
                 return { "playlist": inObj.playlist };
-            } else if (inObj.song) {
+            }
+            else if (inObj.song) {
                 if (leafDescriptor) {
                     var outObj = {};
                     leafDescriptor.forEach(function (key) {
@@ -377,17 +361,18 @@ var Loader = (function () {
                         }
                     });
                     return outObj;
-                } else {
+                }
+                else {
                     return inObj.song;
                 }
-            } else {
+            }
+            else {
                 return {};
             }
         }).filter(function (obj) {
             return Object.keys(obj).length > 0;
         });
     };
-
     Loader.prototype.getSongsPage = function (allSongs, start, end) {
         if (end > start) {
             return allSongs.slice(start, end);
@@ -397,14 +382,12 @@ var Loader = (function () {
     return Loader;
 })();
 exports.Loader = Loader;
-
 // Returns a custom object tree corresponding to the descriptor
 function organizer(flat, tags, treeDescriptor, leafDescriptor) {
     var tree = {};
     flat.forEach(function (song) {
         var treePtr = tree;
         var depth = 1;
-
         // strPossibleKeys can be like "albumArtist|artist", or just "album" for instance
         treeDescriptor.forEach(function (strPossibleKeys) {
             var possibleKeys = strPossibleKeys.split("|");
@@ -421,7 +404,8 @@ function organizer(flat, tags, treeDescriptor, leafDescriptor) {
             if (!treePtr[valueForKey]) {
                 if (depth === treeDescriptor.length) {
                     treePtr[valueForKey] = { tags: {}, mpd: [] };
-                } else {
+                }
+                else {
                     treePtr[valueForKey] = { tags: {}, mpd: {} };
                 }
                 var mostCommonKey = possibleKeys[possibleKeys.length - 1];
@@ -437,7 +421,8 @@ function organizer(flat, tags, treeDescriptor, leafDescriptor) {
             leafDescriptor.forEach(function (key) {
                 leaf[key] = song[key];
             });
-        } else {
+        }
+        else {
             leaf = song;
         }
         if (tags["song"] && tags["song"][song.file]) {
